@@ -22,11 +22,14 @@
 
 #include <iostream>
 #include <sstream>
+#include <vector>
+#include <string>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 
 #include "serverexception.h"
 #include "job.h"
+#include "utils.h"
 
 using namespace std;
 using namespace boost::asio::ip;
@@ -194,6 +197,36 @@ size_t Beanstalkpp::Client::watch(const std::string& tube) {
   this->tokenStream.expectEol();
   
   return ret;
+}
+
+// Hong Wu <xunzhangthu@gmail.com>
+std::vector<std::string> Beanstalkpp::Client::watching() {
+  stringstream s("list-tubes-watched\r\n");
+  size_t bytes;
+  char *data;
+  std::vector<std::string> tubes;
+  
+  this->sendCommand(s);
+  this->tokenStream.expectString("OK");
+  bytes = this->tokenStream.expectInt();
+  this->tokenStream.expectEol();
+  
+  data = this->tokenStream.readChunk(bytes);
+  try {
+    // ugly YAML parser
+    std::string buf(data, data + bytes);
+    std::vector<std::string> tmp = Beanstalkpp::str_split(buf, '\n');
+    for(size_t i = 1; i < tmp.size(); ++i) {
+      tubes.push_back(tmp[i].substr(2, tmp[i].size() - 2));
+    }
+    delete [] data;
+  } catch(...) {
+    delete [] data;
+    throw;
+  }
+
+  this->tokenStream.expectEol();
+  return tubes;
 }
 
 vector< string > Beanstalkpp::Client::listTubes() {

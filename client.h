@@ -48,7 +48,7 @@ public:
    * @param port     The TCP port to use
    */
   Client(const std::string &server, int port);
-  
+
   /**
    * Connect to the server. This must be done before performing any other operations.
    * 
@@ -229,6 +229,12 @@ public:
    * @return The number of tubes currently watched
    */
   size_t watch(const std::string &tube);
+  
+  /**
+   * Authors: Hong Wu <xunzhangthu@gmail.com>
+   *
+   */
+  std::vector<std::string> watching();
   
   /**
    * Returns a list of all tubes available at the beanstalk server

@@ -19,7 +19,8 @@
 //
 
 // Includes all files needed for beanstalk.
-#include <beanstalk++/client.h>
-#include <beanstalk++/job.h>
-#include <beanstalk++/exception.h>
-#include <beanstalk++/serverexception.h>
+#include "client.h"
+#include "job.h"
+#include "exception.h"
+#include "serverexception.h"
+#include "pool.h"
