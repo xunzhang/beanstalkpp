@@ -60,6 +60,18 @@ class Pool {
   void use(const std::string & tube) {
     auto server_id = tube_hash(tube);
     conns[server_id]->use(tube);
+    usedTube = tube;
+  }
+
+  std::string usIng() {
+    /*
+    std::vector<std::string> tubes;
+    for(size_t i = 0; i < conns.size(); ++i) {
+      tubes.push_back(conns[i]->usIng());
+    }
+    return tubes;
+    */
+    return usedTube;
   }
   
   size_t watch(const std::string & tube) {
@@ -108,10 +120,20 @@ class Pool {
  
  // communication interface
  public:
-  int put(const std::string & msg) {}
+  int put(const std::string & msg) {
+    auto server_id = tube_hash(usedTube);
+    return conns[server_id]->put(msg);
+  }
 
   template <class TJob>
-  TJob reserve() {}
+  TJob reserve() {
+    auto server_id = tube_hash(usedTube);
+    return conns[server_id]->reserve<TJob>();
+  }
+
+  Job reserve() {
+    return reserve<Job>();
+  }
 
   template <class TJob>
   bool reserveWithTimeout(std::shared_ptr<TJob> & jobPtr, int timeout) {}
@@ -128,6 +150,7 @@ class Pool {
 
  private:
   std::vector<Beanstalkpp::Client*> conns; // clients
+  std::string usedTube;
 }; 
 
 } // namespace Beanstalkpp>

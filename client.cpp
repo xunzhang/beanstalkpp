@@ -41,7 +41,7 @@ using namespace boost::asio::ip;
 // 1 minute
 #define DEFAULT_TTR 60 
 
-Beanstalkpp::Client::Client(const std::string& server, int port): 
+Beanstalkpp::Client::Client(const string& server, int port): 
   socket(io_service), tokenStream(socket) {
   this->hostname = server;
   this->port = port;
@@ -63,7 +63,7 @@ void Beanstalkpp::Client::connect() {
   }
 }
 
-int Beanstalkpp::Client::put(const std::string& data) {
+int Beanstalkpp::Client::put(const string& data) {
   stringstream str;
   string reply;
   
@@ -92,7 +92,7 @@ int Beanstalkpp::Client::put(const std::string& data) {
   throw ServerException(ServerException::BAD_FORMAT, "Received bad reply to put: " + reply);
 }
 
-void Beanstalkpp::Client::use(const std::string& tubeName) {
+void Beanstalkpp::Client::use(const string& tubeName) {
   stringstream str;
   string reply;
   string expectedReply = "USING " + tubeName + "\r\n";
@@ -108,7 +108,20 @@ void Beanstalkpp::Client::use(const std::string& tubeName) {
   this->tokenStream.expectEol();
 }
 
-void Beanstalkpp::Client::sendCommand(const std::stringstream& str) {
+// Hong Wu <xunzhangthu@gmail.com>
+string Beanstalkpp::Client::usIng() {
+  stringstream str("list-tube-used\r\n");
+  string tube;
+
+  this->sendCommand(str);
+  this->tokenStream.expectString("USING");
+  tube = this->tokenStream.nextString();
+  this->tokenStream.expectEol();
+
+  return tube;
+}
+
+void Beanstalkpp::Client::sendCommand(const stringstream& str) {
   boost::system::error_code error;
   
   boost::asio::write(socket, boost::asio::buffer(str.str()), boost::asio::transfer_all(), error);
@@ -129,11 +142,11 @@ bool Beanstalkpp::Client::peekReady(Beanstalkpp::job_p_t& jobPtr) {
   job_id_t jobId;
   size_t payloadSize;
   char *payload;
-  std::stringstream s("peek-ready\r\n");
+  stringstream s("peek-ready\r\n");
   
   this->sendCommand(s);
   
-  std::string response = this->tokenStream.nextString();
+  string response = this->tokenStream.nextString();
   if(response.compare("NOT_FOUND") == 0) {
     this->tokenStream.expectEol();
     return false; 
@@ -187,7 +200,7 @@ void Beanstalkpp::Client::bury(const Beanstalkpp::Job& j, int priority) {
     throw ServerException(ServerException::BAD_FORMAT, "Didn't get BURIED reply to bury command");
 }
 
-size_t Beanstalkpp::Client::watch(const std::string& tube) {
+size_t Beanstalkpp::Client::watch(const string& tube) {
   stringstream s("watch " + tube + "\r\n");
   int ret;
   
@@ -200,11 +213,11 @@ size_t Beanstalkpp::Client::watch(const std::string& tube) {
 }
 
 // Hong Wu <xunzhangthu@gmail.com>
-std::vector<std::string> Beanstalkpp::Client::watching() {
+vector<string> Beanstalkpp::Client::watching() {
   stringstream s("list-tubes-watched\r\n");
   size_t bytes;
   char *data;
-  std::vector<std::string> tubes;
+  vector<string> tubes;
   
   this->sendCommand(s);
   this->tokenStream.expectString("OK");
@@ -214,8 +227,8 @@ std::vector<std::string> Beanstalkpp::Client::watching() {
   data = this->tokenStream.readChunk(bytes);
   try {
     // ugly YAML parser
-    std::string buf(data, data + bytes);
-    std::vector<std::string> tmp = Beanstalkpp::str_split(buf, '\n');
+    string buf(data, data + bytes);
+    vector<string> tmp = Beanstalkpp::str_split(buf, '\n');
     for(size_t i = 1; i < tmp.size(); ++i) {
       tubes.push_back(tmp[i].substr(2, tmp[i].size() - 2));
     }

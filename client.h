@@ -67,6 +67,12 @@ public:
   void use(const std::string &tubeName);
   
   /**
+   * Authors: Hong Wu <xunzhangthu@gmail.com>
+   *
+   */
+  std::string usIng();
+  
+  /**
    * Adds a job consisting of a string to the server
    * 
    * @param data The data to send
