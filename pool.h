@@ -20,7 +20,7 @@ namespace Beanstalkpp {
 class Pool {
 
  private:
-  void init(const std::string & s) {
+  void initOne(const std::string & s) {
     auto tmp = Beanstalkpp::str_split(s, ':');
     Beanstalkpp::Client *pt = new Beanstalkpp::Client(tmp[0], std::stoi(tmp[1]));
     pt->connect();
@@ -28,6 +28,9 @@ class Pool {
   }
 
   inline size_t tube_hash(const std::string & tube) {
+    if(tube == "default") {
+      return 0;
+    }
     std::vector<size_t> ids;
     for(size_t i = 0; i < conns.size(); ++i) {
       ids.push_back(i);
@@ -39,13 +42,17 @@ class Pool {
  // meta interface 
  public:
   Pool(std::string serverInfo) {
-    init(serverInfo);
+    initOne(serverInfo);
+    watchingList.push_back("default");
+    usedTube = "default";
   }
 
   Pool(std::vector<std::string> serversInfo) {
     for(auto & serverInfo : serversInfo) {
-      init(serverInfo);
+      initOne(serverInfo);
     }
+    watchingList.push_back("default");
+    usedTube = "default";
   }
 
   // TODO
@@ -64,46 +71,27 @@ class Pool {
   }
 
   std::string usIng() {
-    /*
-    std::vector<std::string> tubes;
-    for(size_t i = 0; i < conns.size(); ++i) {
-      tubes.push_back(conns[i]->usIng());
-    }
-    return tubes;
-    */
     return usedTube;
   }
   
   size_t watch(const std::string & tube) {
     auto server_id = tube_hash(tube);
-    size_t cnt = conns[server_id]->watch(tube);
-    // cal watched tube cnt
-    for(size_t i = 0; i < conns.size(); ++i) {
-      if(i == server_id) continue;
-      auto tubes = watching();
-      cnt += tubes.size();
+    conns[server_id]->watch(tube);
+    if(watchingList.find(tube) == watchingList.end()) {
+      watchingList.push_back(tube);
     }
-    return cnt;
+    return watchingList.size();
   }
 
   size_t watch(const std::vector<std::string> & tubes) {
-    size_t cnt;
     for(auto & tube : tubes) {
-      cnt = watch(tube);
+      watch(tube);
     }
-    return cnt;
+    return watchingList.size();
   }
 
-  // tubes contain conns.size() number of 'default'-tube
   std::vector<std::string> watching() {
-    std::vector<std::string> tubes;
-    for(size_t i = 0; i < conns.size(); ++i) {
-      auto tmpTubes = conns[i]->watching();
-      for(auto & tb : tmpTubes) {
-        tubes.push_back(tb);
-      }
-    }
-    return tubes;
+    return watchingList;
   }
 
   void bind(const std::string & tubeDst, 
@@ -128,13 +116,23 @@ class Pool {
   // order do not guaranteed
   template <class TJob>
   TJob reserve() {
-    auto tubes = watching();
-    for(auto & tube : tubes) {
+    for(auto & tube : watchingList) {
       auto server_id = tube_hash(tube);
       return conns[server_id]->reserve<TJob>();
     }
   }
 
+  /*
+  // another impl of reserve
+  // order do not guaranteed
+  template <class TJob>
+  TJob reserve() {
+    for(size_t i = 0; i < conns.size(); ++i) {
+      return conns[i]->reserve<TJob>();
+    }
+  }
+  */
+  
   Job reserve() {
     return reserve<Job>();
   }
@@ -150,11 +148,11 @@ class Pool {
 
   void bury(const Beanstalkpp::Job & j, int priority = 10) {}
 
-  std::vector<std::string> listTubes() {}
-
  private:
-  std::vector<Beanstalkpp::Client*> conns; // clients
+  std::vector<Beanstalkpp::Client*> conns;
+  // pool storage
   std::string usedTube;
+  std::vector<std::string> watchingList;
 }; 
 
 } // namespace Beanstalkpp>
