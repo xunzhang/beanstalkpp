@@ -9,6 +9,8 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <algorithm>
 
 #include "client.h"
 #include "job.h"
@@ -27,9 +29,20 @@ class Pool {
     this->conns.push_back(pt);
   }
 
+  void break_rule(const std::string & tube, size_t sid) {
+    bindMap[tube] = sid;
+  }
+
+  void recovery_rule(const std::string & tube) {
+    bindMap.erase(tube);
+  }
+
   inline size_t tube_hash(const std::string & tube) {
     if(tube == "default") {
       return 0;
+    }
+    if(bindMap.count(tube) == 1) {
+      return bindMap[tube];
     }
     std::vector<size_t> ids;
     for(size_t i = 0; i < conns.size(); ++i) {
@@ -65,8 +78,8 @@ class Pool {
   }
 
   void use(const std::string & tube) {
-    auto server_id = tube_hash(tube);
-    conns[server_id]->use(tube);
+    auto serverId = tube_hash(tube);
+    conns[serverId]->use(tube);
     usedTube = tube;
   }
 
@@ -75,9 +88,11 @@ class Pool {
   }
   
   size_t watch(const std::string & tube) {
-    auto server_id = tube_hash(tube);
-    conns[server_id]->watch(tube);
-    if(watchingList.find(tube) == watchingList.end()) {
+    auto serverId = tube_hash(tube);
+    conns[serverId]->watch(tube);
+    if(std::find(watchingList.begin(), 
+                 watchingList.end(), 
+                 tube) != watchingList.end()) {
       watchingList.push_back(tube);
     }
     return watchingList.size();
@@ -95,30 +110,46 @@ class Pool {
   }
 
   void bind(const std::string & tubeDst, 
-            const std::string & tubeSrc) {}
+            const std::string & tubeSrc) {
+    auto serverId = tube_hash(tubeSrc);
+    break_rule(tubeDst, serverId);
+    conns[serverId]->bind(tubeDst, tubeSrc);
+  }
 
   void bind(const std::vector<std::string> & tubesDst, 
-            const std::vector<std::string> & tubesSrc) {}
+            const std::string & tubeSrc) {
+    for(auto & tubeDst : tubesDst) {
+      bind(tubeDst, tubeSrc);
+    }
+  }
 
   void unbind(const std::string & tubeDst, 
-              const std::string & tubeSrc) {}
+              const std::string & tubeSrc) {
+    auto serverId = tube_hash(tubeSrc);
+    recovery_rule(tubeDst);
+    conns[serverId]->unbind(tubeDst, tubeSrc);
+  }
 
   void unbind(const std::vector<std::string> & tubesDst, 
-              const std::vector<std::string> & tubesSrc) {}
+              const std::string & tubeSrc) {
+    for(auto & tubeDst : tubesDst) {
+      unbind(tubeDst, tubeSrc);
+    }
+  }
  
  // communication interface
  public:
   int put(const std::string & msg) {
-    auto server_id = tube_hash(usedTube);
-    return conns[server_id]->put(msg);
+    auto serverId = tube_hash(usedTube);
+    return conns[serverId]->put(msg);
   }
 
   // order do not guaranteed
   template <class TJob>
   TJob reserve() {
     for(auto & tube : watchingList) {
-      auto server_id = tube_hash(tube);
-      return conns[server_id]->reserve<TJob>();
+      auto serverId = tube_hash(tube);
+      return conns[serverId]->reserve<TJob>();
     }
   }
 
@@ -153,6 +184,8 @@ class Pool {
   // pool storage
   std::string usedTube;
   std::vector<std::string> watchingList;
+  // a little tricky here
+  std::unordered_map<std::string, size_t> bindMap;
 }; 
 
 } // namespace Beanstalkpp>

@@ -241,6 +241,20 @@ public:
    *
    */
   std::vector<std::string> watching();
+
+  /**
+   * bind tubeDst to tubeSrc(exchange)
+   * Authors: Hong Wu <xunzhangthu@gmail.com>
+   *
+   */
+  void bind(const std::string & tubeDst, const std::string & tubeSrc);
+
+  /**
+   * unbind tubeDst from tubeSrc(exchange) 
+   * Authors: Hong Wu <xunzhangthu@gmail.com>
+   *
+   */
+  void unbind(const std::string & tubeDest, const std::string & tubeSrc);
   
   /**
    * Returns a list of all tubes available at the beanstalk server

@@ -242,6 +242,24 @@ vector<string> Beanstalkpp::Client::watching() {
   return tubes;
 }
 
+// Hong Wu <xunzhangthu@gmail.com>
+void Beanstalkpp::Client::bind(const std::string & tubeDst, 
+                               const std::string & tubeSrc) {
+  stringstream s("bind " + tubeSrc + " " + tubeDst + "\r\n");
+  this->sendCommand(s);
+  this->tokenStream.expectString("BINDED");
+  this->tokenStream.expectEol();
+}
+
+// Hong Wu <xunzhangthu@gmail.com>
+void Beanstalkpp::Client::unbind(const std::string & tubeDst, 
+                                 const std::string & tubeSrc) {
+  stringstream s("unbind " + tubeSrc + " " + tubeDst + "\r\n");
+  this->sendCommand(s);
+  this->tokenStream.expectString("UNBINDED");
+  this->tokenStream.expectEol();
+}
+
 vector< string > Beanstalkpp::Client::listTubes() {
   vector<string> ret;
   stringstream s("list-tubes\r\n");
