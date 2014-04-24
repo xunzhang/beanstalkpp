@@ -125,10 +125,14 @@ class Pool {
     return conns[server_id]->put(msg);
   }
 
+  // order do not guaranteed
   template <class TJob>
   TJob reserve() {
-    auto server_id = tube_hash(usedTube);
-    return conns[server_id]->reserve<TJob>();
+    auto tubes = watching();
+    for(auto & tube : tubes) {
+      auto server_id = tube_hash(tube);
+      return conns[server_id]->reserve<TJob>();
+    }
   }
 
   Job reserve() {
