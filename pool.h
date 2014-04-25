@@ -44,12 +44,7 @@ class Pool {
     if(bindMap.count(tube) == 1) {
       return bindMap[tube];
     }
-    std::vector<size_t> ids;
-    for(size_t i = 0; i < conns.size(); ++i) {
-      ids.push_back(i);
-    }
-    Beanstalkpp::ring<size_t> tubeRing(ids);
-    return tubeRing.get_server(tube);
+    return tubeRingPtr->get_server(tube);
   }
 
  // meta interface 
@@ -64,6 +59,11 @@ class Pool {
     for(auto & serverInfo : serversInfo) {
       initOne(serverInfo);
     }
+    std::vector<size_t> ids;
+    for(size_t i = 0; i < conns.size(); ++i) {
+      ids.push_back(i);
+    }
+    tubeRingPtr = new Beanstalkpp::ring<size_t>(ids);
     watchingList.push_back("default");
     usedTube = "default";
   }
@@ -75,6 +75,10 @@ class Pool {
       conn.close();
     }
     */
+    for(size_t i = 0; i < conns.size(); ++i) {
+      delete conns[i];
+    }
+    delete tubeRingPtr;
   }
 
   void use(const std::string & tube) {
@@ -169,24 +173,42 @@ class Pool {
   }
 
   template <class TJob>
-  bool reserveWithTimeout(std::shared_ptr<TJob> & jobPtr, int timeout) {}
+  bool reserveWithTimeout(std::shared_ptr<TJob> & jobPtr, 
+                          int timeout) {
+    for(auto & tube : watchingList) {
+      auto serverId = tube_hash(tube);
+      return conns[serverId]->reserveWithTimeout<TJob>(jobPtr, timeout);
+    }
+  }
 
-  bool reserveWithTimeout(job_p_t, int timeout) {}
+  bool reserveWithTimeout(Beanstalkpp::job_p_t & jobPtr, int timeout) {
+    return reserveWithTimeout(jobPtr, timeout);
+  }
 
-  void delt(const Beanstalkpp::Job & j) {}
+  void del(const Beanstalkpp::Job & j) {
+    auto serverId = tube_hash(usedTube);
+    return conns[serverId]->del(j);
+  }
 
-  void delt(const job_p_t & j) {}
+  void del(const Beanstalkpp::job_p_t & j) {
+    auto serverId = tube_hash(usedTube);
+    return conns[serverId]->del(j);
+  }
 
-  void bury(const Beanstalkpp::Job & j, int priority = 10) {}
+  void bury(const Beanstalkpp::Job & j, int priority = 10) {
+    auto serverId = tube_hash(usedTube);
+    return conns[serverId]->bury(j, priority);
+  }
 
  private:
   std::vector<Beanstalkpp::Client*> conns;
+  Beanstalkpp::ring<size_t> *tubeRingPtr;
   // pool storage
   std::string usedTube;
   std::vector<std::string> watchingList;
-  // a little tricky here
+  // little tricky: to break/recovery the tube_hash rule 
   std::unordered_map<std::string, size_t> bindMap;
 }; 
 
-} // namespace Beanstalkpp>
+} // namespace Beanstalkpp
 #endif
