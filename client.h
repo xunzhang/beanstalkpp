@@ -18,8 +18,8 @@
 // Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
 
-#ifndef _BEANSTALK_POOL_H
-#define _BEANSTALK_POOL_H
+#ifndef _BEANSTALK_CLIENT_H
+#define _BEANSTALK_CLIENT_H
 
 #include <string>
 #include <iostream>
@@ -40,7 +40,8 @@ class Job;
  * The beanstalk client. Used for sending and receiving jobs over beanstalk.
  */
 class Client {
-public:
+
+ public:
   /**
    * Creates a new client and connects it to a server.
    * 
@@ -255,6 +256,10 @@ public:
    *
    */
   void unbind(const std::string & tubeDest, const std::string & tubeSrc);
+
+  std::string stats();
+
+  std::string statsTube(const std::string & tube);
   
   /**
    * Returns a list of all tubes available at the beanstalk server
@@ -262,7 +267,8 @@ public:
    * @throws ServerException With reason BAD_FORMAT on unexpected server response
    */
   std::vector<std::string> listTubes();
-private:
+
+ private:
   std::string tubeName;
   
   /**

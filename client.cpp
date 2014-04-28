@@ -260,6 +260,42 @@ void Beanstalkpp::Client::unbind(const std::string & tubeDst,
   this->tokenStream.expectEol();
 }
 
+std::string Beanstalkpp::Client::stats() {
+  int bytes;
+  char *data;
+  stringstream s("stats\r\n");
+  this->sendCommand(s);
+
+  this->tokenStream.expectString("OK");
+  
+  bytes = this->tokenStream.expectInt();
+  this->tokenStream.expectEol();
+  data = this->tokenStream.readChunk(bytes);
+  std::string r(data, data + bytes);
+  return r;
+}
+
+string Beanstalkpp::Client::statsTube(const std::string & tube) {
+  string r, reply;
+  stringstream s("stats-tube " + tube + "\r\n");
+  this->sendCommand(s);
+  this->tokenStream.expectString("OK");
+  //reply = this->tokenStream.nextString();
+  if(reply.compare("NOT_FOUND") == 0) {
+    throw ServerException(ServerException::NOT_FOUND, "Got not found in reply to stats_tube");
+  }
+  if(reply.compare("OK") == 0) {
+    char *data;
+    int bytes = this->tokenStream.expectInt();
+    this->tokenStream.expectEol();
+    data = this->tokenStream.readChunk(bytes);
+    std::string tmp(data, data + bytes);
+    r = tmp;
+  }
+  return r;
+}
+
+
 vector< string > Beanstalkpp::Client::listTubes() {
   vector<string> ret;
   stringstream s("list-tubes\r\n");

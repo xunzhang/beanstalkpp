@@ -59,6 +59,10 @@ public:
   Job(const Job &job);
   
   virtual ~Job();
+
+  Client* getClientPtr() {
+    return client;
+  }
   
   /**
    * Treats the job as a string message and returns it.
