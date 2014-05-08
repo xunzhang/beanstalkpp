@@ -187,7 +187,7 @@ class Pool {
 
   // at most wait [timeout * watchingList.size()] seconds
   template <class TJob>
-  bool reserveWithTimeout(std::shared_ptr<TJob> & jobPtr, 
+  bool reserveWithTimeout(boost::shared_ptr<TJob> & jobPtr, 
                           int timeout) {
     bool r = false;
     for(auto & tube : watchingList) {
