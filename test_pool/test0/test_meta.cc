@@ -8,7 +8,7 @@ using std::vector;
 
 int main(int argc, char *argv[])
 {
-  vector<string> serverInfo = {"beater7:11300", "beater7:11301"};
+  vector<string> serverInfo = {"beater1:11300", "beater2:11300"};
   Beanstalkpp::Pool conns(serverInfo);
   std::cout << "##########--Test Start--###################" << std::endl;
   std::cout << "watching xz1: " << conns.watch("xz1") << std::endl;

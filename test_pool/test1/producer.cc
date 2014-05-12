@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
   while(1) {
     Beanstalkpp::Job job = conns.reserve();
     sum += stoi(job.asString());
-    conns.del(job);
+    job.del();
     std::cout << "result is: " << sum << std::endl;
   }
   return 0;

@@ -35,6 +35,8 @@
 namespace Beanstalkpp {
 
 class Job;
+typedef unsigned int job_id_t;
+typedef boost::shared_ptr<Job> job_p_t;
 
 /**
  * The beanstalk client. Used for sending and receiving jobs over beanstalk.
@@ -271,6 +273,14 @@ class Client {
  private:
   std::string tubeName;
   
+  
+  boost::asio::io_service io_service;
+  boost::asio::ip::tcp::socket socket;
+  
+  std::string hostname;
+  int port;
+  
+ public:
   /**
    * Sends a command over the TCP wire
    * 
@@ -279,13 +289,6 @@ class Client {
    * @throws Exception On network errors
    */
   void sendCommand(const std::stringstream &cmd);
-  
-  boost::asio::io_service io_service;
-  boost::asio::ip::tcp::socket socket;
-  
-  std::string hostname;
-  int port;
-  
   TokenizedStream tokenStream;
 };
 

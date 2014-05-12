@@ -1,20 +1,17 @@
 /**
  * Cluster Extension for Beanstalkpp
- * Authors: Hong Wu <xunzhangthu@gmail.com>
+ * Authors: Hong Wu<xunzhangthu@gmail.com>
  *
  */
 
-#ifndef _BEANSTALK_CLUSTER_H
-#define _BEANSTALK_CLUSTER_H
+#ifndef _BEANSTALKPP_POOL_H
+#define _BEANSTALKPP_POOL_H
 
-#include <string>
 #include <vector>
-#include <unordered_map>
 #include <algorithm>
 
 #include "client.h"
 #include "job.h"
-#include "ring.h"
 #include "utils.h"
 
 namespace Beanstalkpp {
@@ -25,80 +22,53 @@ class Pool {
   void initOne(const std::string & s) {
     auto tmp = Beanstalkpp::str_split(s, ':');
     Beanstalkpp::Client *pt = new Beanstalkpp::Client(
-        tmp[0], 
+        tmp[0],
         std::stoi(tmp[1])
         );
     pt->connect();
-    this->conns.push_back(pt);
+    conns.push_back(pt);
   }
 
-  void breakHash(const std::string & tube, size_t sid) {
-    bindMap[tube] = sid;
-  }
-
-  void recoveryHash(const std::string & tube) {
-    bindMap.erase(tube);
-  }
-
-  inline size_t tubeHash(const std::string & tube) {
-    if(tube == "default") {
-      return 0;
-    }
-    if(bindMap.count(tube) == 1) {
-      return bindMap[tube];
-    }
-    return tubeRingPtr->get_server(tube);
-  }
-
- // meta interface 
+ // declare interface
  public:
   Pool(std::string serverInfo) {
     initOne(serverInfo);
-    std::vector<size_t> ids = {0};
-    tubeRingPtr = new Beanstalkpp::ring<size_t>(ids);
-    watchingList.push_back("default");
+    use("default");
     usedTube = "default";
+    watch("default");
+    watchingList.push_back("default");
   }
 
   Pool(std::vector<std::string> serversInfo) {
     for(auto & serverInfo : serversInfo) {
       initOne(serverInfo);
     }
-    std::vector<size_t> ids;
-    for(size_t i = 0; i < conns.size(); ++i) {
-      ids.push_back(i);
-    }
-    tubeRingPtr = new Beanstalkpp::ring<size_t>(ids);
-    watchingList.push_back("default");
+    use("default");
     usedTube = "default";
+    watch("default");
+    watchingList.push_back("default");
   }
 
-  // TODO
   virtual ~Pool() {
-    /*
-    for(auto & conn : this->conns) {
-      conn.close();
-    }
-    */
     for(size_t i = 0; i < conns.size(); ++i) {
       delete conns[i];
     }
-    delete tubeRingPtr;
   }
 
   void use(const std::string & tube) {
-    auto serverId = tubeHash(tube);
-    conns[serverId]->use(tube);
-    usedTube = tube;
+    for(auto & conn : conns) {
+      conn->use(tube);
+    }
   }
 
   std::string usIng() {
     return usedTube;
   }
-  
+
   size_t watch(const std::string & tube) {
-    auto serverId = tubeHash(tube);
-    conns[serverId]->watch(tube);
+    for(auto & conn : conns) {
+      conn->watch(tube);
+    }
     if(std::find(watchingList.begin(), 
                  watchingList.end(), 
                  tube) == watchingList.end()) {
@@ -118,13 +88,15 @@ class Pool {
     return watchingList;
   }
 
+  // bind tubeDst to tubeSrc
   void bind(const std::string & tubeDst, 
             const std::string & tubeSrc) {
-    auto serverId = tubeHash(tubeSrc);
-    breakHash(tubeDst, serverId);
-    conns[serverId]->bind(tubeDst, tubeSrc);
+    for(auto & conn : conns) {
+      conn->bind(tubeDst, tubeSrc);
+    }
   }
 
+  // bind tubesDst to tubeSrc
   void bind(const std::vector<std::string> & tubesDst, 
             const std::string & tubeSrc) {
     for(auto & tubeDst : tubesDst) {
@@ -132,50 +104,77 @@ class Pool {
     }
   }
 
+  // unbind tubeDst with tubeSrc
   void unbind(const std::string & tubeDst, 
               const std::string & tubeSrc) {
-    auto serverId = tubeHash(tubeSrc);
-    recoveryHash(tubeDst);
-    conns[serverId]->unbind(tubeDst, tubeSrc);
+    for(auto & conn : conns) {
+      conn->unbind(tubeDst, tubeSrc);
+    }
   }
 
+  // unbind tubesDst with tubeSrc
   void unbind(const std::vector<std::string> & tubesDst, 
               const std::string & tubeSrc) {
     for(auto & tubeDst : tubesDst) {
       unbind(tubeDst, tubeSrc);
     }
   }
-  
+
   std::vector<std::string> stats() {
     std::vector<std::string> r;
-    for(size_t i = 0; i < conns.size(); ++i) {
-      r.push_back(conns[i]->stats());
+    for(auto & conn : conns) {
+      try {
+        r.push_back(conn->stats());
+      } catch (...) {
+        std::cout << "stats fail" << std::endl;
+      }
     }
     return r;
   }
 
   std::string statsTube(const std::string & tube) {
-    auto serverId = tubeHash(tube);
-    return conns[serverId]->statsTube(tube);
+    std::string r;
+    for(auto & conn : conns) {
+      try {
+        r = conn->statsTube(tube);
+        return r;
+      } catch (...) {
+        std::cout << "statsTube fail: " << tube << std::endl;
+      }
+    }
+    return r;
   }
- 
+
  // communication interface
  public:
   int put(const std::string & msg) {
-    auto serverId = tubeHash(usedTube);
-    return conns[serverId]->put(msg);
+    int r;
+    for(auto & conn : conns) {
+      try {
+        r = conn->put(msg);
+        return r;
+      } catch (...) {
+        std::cout << "put failed" << std::endl;
+        updateConn();
+      }
+    } 
+    return -1;
   }
 
-  // order do not guaranteed
+  // order can not be guaranteed
   template <class TJob>
   TJob reserve() {
     while(1) {
-      for(auto & tube : watchingList) {
-        auto serverId = tubeHash(tube);
-        boost::shared_ptr<TJob> jobPtr;
-        bool r = conns[serverId]->reserveWithTimeout<TJob>(jobPtr, 0);
-        if(r) {
-          return *jobPtr;
+      for(auto & conn : conns) {
+        try {
+          boost::shared_ptr<TJob> jobPtr;
+          bool r = conn->reserveWithTimeout<TJob>(jobPtr, 0);
+          if(r) {
+            return *jobPtr;
+          }
+        } catch (...) {
+          std::cout << "reserve failed" << std::endl;
+          updateConn();
         }
       } // for
     } // while
@@ -185,55 +184,42 @@ class Pool {
     return reserve<Beanstalkpp::Job>();
   }
 
-  // at most wait [timeout * watchingList.size()] seconds
+  // at most wait [timeout * conns.size()] seconds
+  // return value differ from reserve interface
   template <class TJob>
-  bool reserveWithTimeout(boost::shared_ptr<TJob> & jobPtr, 
+  bool reserveWithTimeout(boost::shared_ptr<TJob> & jobPtr,
                           int timeout) {
-    bool r = false;
-    for(auto & tube : watchingList) {
-      auto serverId = tubeHash(tube);
-      r = conns[serverId]->
-          reserveWithTimeout<TJob>(jobPtr, 
-                                   timeout);
-      if(r) {
-        return true;
+    for(auto & conn : conns) {
+      try {
+        bool r = conn->reserveWithTimeout<TJob>(jobPtr, timeout);
+        if(r) {
+          return true;
+        }
+      } catch (...) {
+        std::cout << "reserveWithTimeout failed" << std::endl;
       }
-    }
+    } // for
     return false;
   }
 
-  bool reserveWithTimeout(Beanstalkpp::job_p_t & jobPtr, 
+  bool reserveWithTimeout(Beanstalkpp::job_p_t & jobPtr,
                           int timeout) {
-    return reserveWithTimeout(jobPtr, timeout);
+    return reserveWithTimeout<Beanstalkpp::Job>(jobPtr, timeout);
   }
-
-  void del(const Beanstalkpp::Job & j) {
-    Beanstalkpp::Job tmpJob = j;
-    auto conn = tmpJob.getClientPtr();
-    conn->del(j);
-  }
-
-  void del(const Beanstalkpp::job_p_t & j) {
-    Beanstalkpp::Job tmpJob = *j;
-    auto conn = tmpJob.getClientPtr();
-    conn->del(j);
-  }
-
-  void bury(const Beanstalkpp::Job & j, int priority = 10) {
-    Beanstalkpp::Job tmpJob = j;
-    auto conn = tmpJob.getClientPtr();
-    conn->bury(j, priority);
+ 
+ private:
+  inline void updateConn() {
+    std::vector<Beanstalkpp::Client*> tmp(conns.begin() + 1, conns.end());
+    tmp.push_back(conns[0]);
+    conns = tmp;
   }
 
  private:
   std::vector<Beanstalkpp::Client*> conns;
-  Beanstalkpp::ring<size_t> *tubeRingPtr;
-  // pool storage
   std::string usedTube;
   std::vector<std::string> watchingList;
-  // tricky: to break/recovery tubeHash
-  std::unordered_map<std::string, size_t> bindMap;
-}; 
+};
 
 } // namespace Beanstalkpp
+
 #endif

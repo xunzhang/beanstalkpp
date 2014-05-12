@@ -21,6 +21,7 @@
 #include "job.h"
 
 #include <sstream>
+#include <iostream>
 
 #include "exception.h"
 
@@ -45,9 +46,7 @@ Beanstalkpp::Job::Job(const Beanstalkpp::Job& job): client(job.client), payload(
 }
 
 
-Beanstalkpp::Job::~Job() {
-
-}
+Beanstalkpp::Job::~Job() {}
 
 std::string Beanstalkpp::Job::asString() const {
   std::string s;
@@ -76,4 +75,12 @@ int Beanstalkpp::Job::asAsciiInt() const {
   if(!(s >> ret)) throw Exception("Payload is not a valid ASCII int");
   
   return ret;
+}
+
+void Beanstalkpp::Job::del() {
+  stringstream s;
+  s << "delete " << jobId << "\r\n";
+  client->sendCommand(s);
+  client->tokenStream.expectString("DELETED");
+  client->tokenStream.expectEol();
 }

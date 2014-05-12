@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     if(num % 100 == 0) {
       conns.put("1");
     }
-    conns.del(job);
+    job.del();
   }
   return 0;
 }

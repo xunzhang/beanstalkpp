@@ -23,4 +23,5 @@
 #include "job.h"
 #include "exception.h"
 #include "serverexception.h"
+#include "hashpool.h"
 #include "pool.h"

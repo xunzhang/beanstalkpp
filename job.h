@@ -21,8 +21,9 @@
 #ifndef JOB_H
 #define JOB_H
 
-#include <boost/shared_ptr.hpp>
 #include <string>
+#include <boost/shared_ptr.hpp>
+#include "client.h"
 
 namespace Beanstalkpp {
   
@@ -84,8 +85,11 @@ public:
   job_id_t getJobId() const;
   
   Job operator =(const Job &job);
+
+  void del();
+
 private:
-  Client *client;
+  Beanstalkpp::Client *client;
   boost::shared_ptr<char> payload;
   size_t payloadSize;
   job_id_t jobId;

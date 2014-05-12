@@ -16,10 +16,11 @@ int main(int argc, char *argv[])
   while(1) {
     Beanstalkpp::Job job = conns.reserve();
     int num = stoi(job.asString());
+    std::cout << num << std::endl;
     if(num % 100 == 0) {
       conns.put("1");
     }
-    conns.del(job);
+    job.del();
   }
   return 0;
 }
