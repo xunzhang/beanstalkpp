@@ -55,6 +55,30 @@ class Pool {
     }
   }
 
+  Pool(const Pool & p) : usedTube(p.usedTube) {
+    conns = p.conns;
+    watchingList = p.watchingList;
+  }
+
+  Pool& operator = (const Pool & p) {
+    usedTube = p.usedTube;
+    conns = p.conns;
+    watchingList = p.watchingList;
+    return *this;
+  }
+  
+  Pool(Pool && p) : usedTube(p.usedTube) {
+    std::swap(conns, p.conns);
+    std::swap(watchingList, p.watchingList);
+  }
+
+  Pool& operator = (Pool && p) {
+    std::swap(usedTube, p.usedTube);
+    std::swap(conns, p.conns);
+    std::swap(watchingList, p.watchingList);
+    return *this;
+  }
+
   void use(const std::string & tube) {
     for(auto & conn : conns) {
       conn->use(tube);
