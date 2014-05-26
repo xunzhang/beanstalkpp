@@ -50,7 +50,8 @@ class Pool {
   }
 
   virtual ~Pool() {
-    for(size_t i = 0; i < conns.size(); ++i) {
+    size_t sz = conns.size();
+    for(size_t i = 0; i < sz; ++i) {
       delete conns[i];
     }
   }
