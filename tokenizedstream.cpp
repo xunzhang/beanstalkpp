@@ -17,6 +17,7 @@
 // along with this library; if not, write to the Free Software Foundation,
 // Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
+#include <iostream>
 
 #include "tokenizedstream.h"
 
@@ -78,9 +79,20 @@ unsigned int Beanstalkpp::TokenizedStream::expectInt() {
   unsigned int ret;
   
   istringstream stream(s);
-  if(!(stream >> ret)) 
+  if(!(stream >> ret)) {
     throw ServerException(ServerException::BAD_FORMAT, "Expected integer but got: " + s);
+  }
+  return ret;
+}
+
+uint64_t Beanstalkpp::TokenizedStream::expectULL() {
+  string s = this->nextString();
+  uint64_t ret;
   
+  istringstream stream(s);
+  if(!(stream >> ret)) {
+    throw ServerException(ServerException::BAD_FORMAT, "Expected integer but got: " + s);
+  }
   return ret;
 }
 
