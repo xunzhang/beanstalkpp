@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
   Beanstalkpp::Pool conns(serverInfo);
   conns.watch("xz");
   conns.use("gq");
+  int cnt = 100;
   while(1) {
     Beanstalkpp::Job job = conns.reserve();
     int num = stoi(job.asString());

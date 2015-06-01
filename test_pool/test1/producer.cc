@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
     conns.put(std::to_string(i));
   }
   int sum = 0;
+  int cnt = 100;
   while(1) {
     Beanstalkpp::Job job = conns.reserve();
     sum += stoi(job.asString());
