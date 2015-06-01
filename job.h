@@ -22,6 +22,7 @@
 #define JOB_H
 
 #include <string>
+#include <cstdint>
 #include <boost/shared_ptr.hpp>
 #include "client.h"
 
@@ -30,7 +31,7 @@ namespace Beanstalkpp {
 class Client;
 class Job;
 
-typedef unsigned int job_id_t;
+typedef uint64_t job_id_t;
 typedef boost::shared_ptr<Job> job_p_t;
 
 /**

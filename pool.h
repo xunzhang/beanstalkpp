@@ -1,12 +1,13 @@
 /**
- * Cluster Extension for Beanstalkpp
- * Authors: Hong Wu<xunzhangthu@gmail.com>
+ * Pool of Connections 
+ * Authors: Hong Wu <xunzhangthu@gmail.com>
  *
  */
 
 #ifndef _BEANSTALKPP_POOL_H
 #define _BEANSTALKPP_POOL_H
 
+#include <unistd.h>
 #include <vector>
 #include <algorithm>
 
@@ -176,8 +177,7 @@ class Pool {
     int r;
     for(auto & conn : conns) {
       try {
-        r = conn->put(msg);
-        return r;
+        return conn->put(msg);
       } catch (...) {
         std::cout << "put failed" << std::endl;
         updateConn();
@@ -192,16 +192,13 @@ class Pool {
     while(1) {
       for(auto & conn : conns) {
         try {
-          boost::shared_ptr<TJob> jobPtr;
-          bool r = conn->reserveWithTimeout<TJob>(jobPtr, 0);
-          if(r) {
-            return *jobPtr;
-          }
+          return conn->reserve<TJob>();
         } catch (...) {
           std::cout << "reserve failed" << std::endl;
           updateConn();
         }
       } // for
+      usleep(100);
     } // while
   }
 

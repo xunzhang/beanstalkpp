@@ -63,6 +63,8 @@ public:
    * @throws ServerException If there are no more characters left in this token string
    */
   unsigned int expectInt();
+
+  uint64_t expectULL();
   
   /**
    * Expects the next token to be \r\n

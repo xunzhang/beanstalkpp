@@ -35,7 +35,7 @@
 namespace Beanstalkpp {
 
 class Job;
-typedef unsigned int job_id_t;
+typedef uint64_t job_id_t;
 typedef boost::shared_ptr<Job> job_p_t;
 
 /**
@@ -105,10 +105,9 @@ class Client {
     this->sendCommand(s);
     
     this->tokenStream.expectString("RESERVED");
-    jobId = this->tokenStream.expectInt();
+    jobId = this->tokenStream.expectULL();
     payloadSize = this->tokenStream.expectInt();
     this->tokenStream.expectEol();
-    
     payload = this->tokenStream.readChunk(payloadSize);
     this->tokenStream.expectEol();
     
@@ -147,7 +146,7 @@ class Client {
     std::string response = this->tokenStream.nextString();
     
     if(response.compare("RESERVED") == 0) {
-      jobId = this->tokenStream.expectInt();
+      jobId = this->tokenStream.expectULL();
       payloadSize = this->tokenStream.expectInt();
       this->tokenStream.expectEol();
       
